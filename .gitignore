@@ -1,0 +1,12 @@
+*.egg-info/
+bin/*
+tests/*
+data/*
+*.log
+!data/.keep
+daq/*
+!daq/.keep
+__pycache__/*
+*.pyc
+*.csv
+.DS_STORE

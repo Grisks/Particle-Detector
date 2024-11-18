@@ -1,13 +1,16 @@
 import minimalmodbus
+import time
+import logging
+from datetime import datetime
 
 DETECTION_REGISTER = 0x06
 STOP_DETECTION = 0x00
 START_DETECTION = 0x01
 
-PORT = "/dev/"
+PORT = "/dev/tty.Bluetooth-Incoming-Port"
 class SerialComm():
     def __init__(self):
-        self.instrument = minimalmodbus.Instrument(PORT, 0xFE, mode=minimalmodbus.MODE_RTU)  # Replace with your RS232 port and slave address
+        self.instrument = minimalmodbus.Instrument(PORT, 0xFE, mode=minimalmodbus.MODE_RTU, debug=True)  # Replace with your RS232 port and slave address
         self.input_registers = {
             "0.3Hi": 0x03,
             "0.3Lo": 0x04,
@@ -53,36 +56,69 @@ class SerialComm():
         }
         self.sensor_values.keys()
         self.instrument.serial.baudrate = 9600
-        self.instrument.serial.timeout  = 1
+        self.instrument.serial.timeout  = 5
+        self.logger = logging.getLogger(__name__)
+        start_time = time.strftime("%Y%m%d_%H%M%S")
+        logging.basicConfig(filename=f"Logs/sensor_values_{start_time}.log", level=logging.INFO)
+        self.logger.info("Start of Log File")
 
     def readInputReg(self, Register):
         return self.instrument.read_register(Register, functioncode=4) 
     
     def readSensorValue(self, value):
-        return self.readInputReg(self.input_registers[value])
+        try:
+            out = self.readInputReg(self.input_registers[value])
+            self.logger.info(f"Read sensor value: {value}, Received: {out}")
+        except Exception as e:
+            self.logger.error(e)
+        return out
     
     def readHoldingReg(self, Register):
-        return self.instrument.read_register(Register, functioncode=3)
+        try:
+            out = self.instrument.read_register(Register, functioncode=3)
+            self.logger.info(f"Read HoldingRegister: {Register}, Received: {out}")
+        except Exception as e:
+            self.logger.error(e)
+        return out
     
     def startDetection(self):
-        self.instrument.write_register(DETECTION_REGISTER, START_DETECTION)
+        self.logger.info("Starting Particle Detection")
+        try:
+            self.instrument.write_register(DETECTION_REGISTER, START_DETECTION, functioncode = 6)
+        except Exception as e:
+            self.logger.error(e)
 
     def stopDetection(self):
-        self.instrument.write_register(DETECTION_REGISTER, STOP_DETECTION)
+        self.logger.info("Ending Particle Detection")
+        try:
+            self.instrument.write_register(DETECTION_REGISTER, STOP_DETECTION, functioncode = 6)
+        except Exception as e:
+            self.logger.error(e)
 
     def readSensorValues(self):
         return self.instrument.read_registers(self.input_registers["0.3Hi"], 14, functioncode=4)
     
     def storeSensorValues(self):
-        Values = self.readSensorValues()
+        #Values = self.readSensorValues()
+        Values = [i for i in range(14)]
         Keys = list(self.sensor_values.keys())
         for i in range(14):
             self.sensor_values[Keys[i]] = Values[i]
+        now = datetime.now()
+        self.logger.info(f"Time: {now.time()}, Values: {Values}")
 
 
 
     
 if __name__ == "__main__":
-    comm = SerialComm();   
-    comm.storeSensorValues()
-    print(comm.sensor_values)
+    comm = SerialComm();
+    comm.startDetection()
+    time.sleep(45)
+    while True:
+        try:
+            comm.storeSensorValues()
+            time.sleep(60)
+        except Exception as e:
+            comm.logger.error(e)
+            comm.stopDetection()
+        

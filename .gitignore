@@ -3,6 +3,7 @@ bin/*
 tests/*
 data/*
 *.log
+*.xlsx
 !data/.keep
 daq/*
 !daq/.keep

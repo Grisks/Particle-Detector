@@ -7,7 +7,7 @@ DETECTION_REGISTER = 0x06
 STOP_DETECTION = 0x00
 START_DETECTION = 0x01
 
-PORT = "/dev/tty.Bluetooth-Incoming-Port"
+PORT = "/dev/ttyUSB1"
 class SerialComm():
     def __init__(self):
         self.instrument = minimalmodbus.Instrument(PORT, 0xFE, mode=minimalmodbus.MODE_RTU, debug=True)  # Replace with your RS232 port and slave address
@@ -117,8 +117,9 @@ if __name__ == "__main__":
     while True:
         try:
             comm.storeSensorValues()
-            time.sleep(60)
+            time.sleep(30)
         except Exception as e:
             comm.logger.error(e)
             comm.stopDetection()
+
         
